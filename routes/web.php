@@ -12,3 +12,6 @@
 */
 
 // Route::view('/', 'welcome');
+Route::get('/version', function() {
+	return env('APP_VERSION');
+} );
