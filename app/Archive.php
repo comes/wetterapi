@@ -25,6 +25,8 @@ class Archive extends Model
         'windDir' => 'integer', // windrichtung
         'windGust' => 'double|speed:mph,ms', // boeen
         'windSpeed' => 'double|speed:mph,ms', // windgeschwindigkeit
+        'rainRate' => 'double|length:inch,mm', // menge regen pro stunde
+        'rain' => 'double|length:inch,mm', // menge regen absolute
     ];
 
     protected static function boot() {
@@ -54,8 +56,10 @@ class Archive extends Model
     
     protected function castAttribute ($key, $value) {
         $value = parent::castAttribute($key, $value);
+        
+	if (is_null($value)) return null;
 
-        $castTypes = collect(explode('|',$this->getCastType($key)));
+	$castTypes = collect(explode('|',$this->getCastType($key)));
 
         $castTypes->each(function($type) use (&$value) {
             $rule = \Illuminate\Validation\ValidationRuleParser::parse($type);
@@ -102,6 +106,15 @@ class Archive extends Model
             default:
                 return $value;
         }
+    }
+
+    protected function GetLengthCast($value, $rule) {
+        $srcUnit = array_get($rule, '0', 'inch');
+        $targetUnit = array_get($rule, '1', 'mm');
+        if ($srcUnit == 'inch' && $targetUnit == 'mm') {
+            return doubleval($value) * 25.4;
+        }
+        throw new \Exception('conversion currently not implemented');
     }
 
     protected function GetSpeedCast($value, $rule) {
