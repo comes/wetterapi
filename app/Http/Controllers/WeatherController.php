@@ -8,7 +8,8 @@ use App\Archive;
 class WeatherController extends Controller
 {
     public function weather() {
-    	return Archive::paginate(48);
+	$pageSize = request()->get('pageSize',500);
+    	return Archive::paginate($pageSize);
     }
 
     public function current() {
