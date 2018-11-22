@@ -13,5 +13,5 @@
 
 // Route::view('/', 'welcome');
 Route::get('/version', function() {
-	return env('APP_VERSION');
+	return "0.1.1";
 } );
