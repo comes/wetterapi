@@ -29,7 +29,8 @@ class Archive extends Model
         'rain' => 'double|length:inch,mm', // menge regen absolute
     ];
 
-    protected static function boot() {
+    protected static function boot()
+    {
         parent::boot();
         static::addGlobalScope('order', function (Builder $builder) {
             $builder->orderBy('dateTime', 'desc');
@@ -46,22 +47,55 @@ class Archive extends Model
         return $query->select(['dateTime','inTemp', 'outTemp']);
     }
 
-    public function scopeHumidity($query) {
+    public function scopeHumidity($query)
+    {
         return $query->select(['dateTime','outHumidity', 'inHumidity']);
     }
 
-    public function scopeBarometer($query) {
+    public function scopeBarometer($query)
+    {
         return $query->select(['dateTime','barometer', 'pressure', 'altimeter']);
     }
     
-    protected function castAttribute ($key, $value) {
+    public function getRainPast24h()
+    {
+        $rain = self::where('dateTime', '>=', \Carbon\Carbon::now()->subDay()->timestamp)
+            ->sum('rain');
+
+        return $this->GetLengthCast($rain, $this->cast['rain']);
+    }
+
+    public function getRainCurrentMonth()
+    {
+        $rain = self::where('dateTime', '>=', \Carbon\Carbon::parse('first day of this month')->timestamp)
+            ->sum('rain');
+
+        return $this->GetLengthCast($rain, $this->cast['rain']);
+    }
+
+    public function getRainLastMonth()
+    {
+        $firstDay = \Carbon\Carbon::parse('first day of last month')->timestamp;
+        $lastDay = \Carbon\Carbon::parse('last day of last month')->timestamp;
+
+        $rain = self::where('dateTime', '>=', $firstDay)
+            ->where('dateTime', '<=', $lastDay)
+            ->sum('rain');
+
+        return $this->GetLengthCast($rain, $this->cast['rain']);
+    }
+
+    protected function castAttribute($key, $value)
+    {
         $value = parent::castAttribute($key, $value);
         
-	if (is_null($value)) return null;
+        if (is_null($value)) {
+            return null;
+        }
 
-	$castTypes = collect(explode('|',$this->getCastType($key)));
+        $castTypes = collect(explode('|', $this->getCastType($key)));
 
-        $castTypes->each(function($type) use (&$value) {
+        $castTypes->each(function ($type) use (&$value) {
             $rule = \Illuminate\Validation\ValidationRuleParser::parse($type);
             $key = array_get($rule, '0');
 
@@ -75,7 +109,8 @@ class Archive extends Model
         return $value;
     }
 
-    private function defaultCast($key, $value) {
+    private function defaultCast($key, $value)
+    {
         switch ($key) {
             case 'int':
             case 'integer':
@@ -108,7 +143,8 @@ class Archive extends Model
         }
     }
 
-    protected function GetLengthCast($value, $rule) {
+    protected function GetLengthCast($value, $rule)
+    {
         $srcUnit = array_get($rule, '0', 'inch');
         $targetUnit = array_get($rule, '1', 'mm');
         if ($srcUnit == 'inch' && $targetUnit == 'mm') {
@@ -117,19 +153,21 @@ class Archive extends Model
         throw new \Exception('conversion currently not implemented');
     }
 
-    protected function GetSpeedCast($value, $rule) {
+    protected function GetSpeedCast($value, $rule)
+    {
         $srcUnit = array_get($rule, '0', 'mph');
         $targetUnit = array_get($rule, '1', 'ms');
         if ($srcUnit == 'mph' && $targetUnit == 'ms') {
             return doubleval($value) * 0.44704;
-        } else if ($srcUnit == 'mph' && $targetUnit == 'kmh') {
+        } elseif ($srcUnit == 'mph' && $targetUnit == 'kmh') {
             return doubleval($value) * 1.60934;
         }
 
         throw new \Exception('conversion currently not implemented');
     }
 
-    protected function GetTemperatureCast($value, $rule) {
+    protected function GetTemperatureCast($value, $rule)
+    {
         $srcUnit = array_get($rule, '0', 'fahrenheit');
         $targetUnit = array_get($rule, '1', 'celsius');
 
@@ -140,7 +178,8 @@ class Archive extends Model
         throw new \Exception('conversion currently not implemented');
     }
 
-	protected function GetPressureCast($value, $rule) {
+    protected function GetPressureCast($value, $rule)
+    {
         $srcUnit = array_get($rule, '0', 'inhg');
         $targetUnit = array_get($rule, '1', 'hpa');
 
@@ -151,7 +190,8 @@ class Archive extends Model
         throw new \Exception('conversion currently not implemented');
     }
 
-    protected function GetPercentageCast($value, $rule = []) {
-       return doubleval($value)/100;
+    protected function GetPercentageCast($value, $rule = [])
+    {
+        return doubleval($value)/100;
     }
 }
