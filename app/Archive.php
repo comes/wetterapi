@@ -44,7 +44,7 @@ class Archive extends Model
 
     public function scopeTemperature($query)
     {
-        return $query->select(['dateTime','inTemp', 'outTemp']);
+        return $query->select(['dateTime','windchill', 'outTemp']);
     }
 
     public function scopeHumidity($query)
