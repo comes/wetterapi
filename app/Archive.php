@@ -23,7 +23,8 @@ class Archive extends Model
         'dewpoint' => 'double|temperature:fahrenheit,celsius', // taupunkt
         'windchill' => 'double|temperature:fahrenheit,celsius', // gefuehlte temperatur
         'windDir' => 'integer', // windrichtung
-        'windGust' => 'double|speed:mph,ms', // boeen
+        'windGustDir' => 'integer', // windrichtung boeenen
+        'windGust' => 'double|speed:mph,ms', // boeenen
         'windSpeed' => 'double|speed:mph,ms', // windgeschwindigkeit
         'rainRate' => 'double|length:inch,mm', // menge regen pro stunde
         'rain' => 'double|length:inch,mm', // menge regen absolute
@@ -39,7 +40,7 @@ class Archive extends Model
     
     public function scopeWind($query)
     {
-        return $query->select(['dateTime','windSpeed', 'windDir']);
+        return $query->select(['dateTime','windSpeed', 'windDir', 'windGust', 'windGustDir']);
     }
 
     public function scopeTemperature($query)
