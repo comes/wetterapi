@@ -53,6 +53,11 @@ class Archive extends Model
         return $query->select(['dateTime','outHumidity', 'inHumidity']);
     }
 
+    public function scopeRain($query)
+    {
+        return $query->select(['dateTime','rain']);
+    }
+
     public function scopeBarometer($query)
     {
         return $query->select(['dateTime','barometer', 'pressure', 'altimeter']);

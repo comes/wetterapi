@@ -19,17 +19,22 @@ Route::group(['prefix' => '/weather'], function () {
 });
 
 Route::get('/wind', function (Request $request) {
-    $value = \App\Archive::orderBy('dateTime', 'asc')->wind()->paginate(1000); // 48 = alle 30 minuten neue daten
+    $value = \App\Archive::orderBy('dateTime', 'asc')->wind()->paginate(1000);
     return $value;
 });
 
 Route::get('/barometer', function (Request $request) {
-    $value = \App\Archive::orderBy('dateTime', 'asc')->barometer()->paginate(48); // 48 = alle 30 minuten neue daten
+    $value = \App\Archive::orderBy('dateTime', 'asc')->barometer()->paginate(48);
     return $value;
 });
 
 Route::get('/temperature', function (Request $request) {
-    $value = \App\Archive::orderBy('dateTime', 'asc')->temperature()->paginate(1000); // 48 = alle 30 minuten neue daten
+    $value = \App\Archive::orderBy('dateTime', 'asc')->temperature()->paginate(1000);
+    return $value;
+});
+
+Route::get('/rain', function (Request $request) {
+    $value = \App\Archive::orderBy('dateTime', 'asc')->rain()->paginate(1000);
     return $value;
 });
 
