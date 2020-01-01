@@ -2,32 +2,37 @@
 
 namespace App;
 
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class Archive extends Model
 {
     protected $table = 'archive';
 
+    protected $primaryKey = "dateTime";
+
     protected $casts = [
-//        'dateTime' => 'custom_datetime',
-        'inTemp' => 'double|temperature:fahrenheit,celsius',
-        'outTemp' => 'double|temperature:fahrenheit,celsius',
-        'heatindex' => 'double|temperature:fahrenheit,celsius',
-        'inHumidity' => 'double|percentage',  // luftfeuchtigkeit innen
-        'outHumidity' => 'double|percentage', // luftfeuchtigkeit aussen
-        'barometer' => 'double|pressure:inhg,hpa',
-        'altimeter' => 'double|pressure:inhg,hpa', // hoehenmesser ?
-        'pressure' => 'double|pressure:inhg,hpa', // druck ?
-        'dewpoint' => 'double|temperature:fahrenheit,celsius', // taupunkt
-        'windchill' => 'double|temperature:fahrenheit,celsius', // gefuehlte temperatur
+        'dateTime' => 'weewxdate',
+        'inTemp' => 'float|temperature:fahrenheit,celsius|round:3',
+        'outTemp' => 'float|temperature:fahrenheit,celsius|round:3',
+        'heatindex' => 'float|temperature:fahrenheit,celsius|round:3',
+        'inHumidity' => 'float|round:3',  // luftfeuchtigkeit innen
+        'outHumidity' => 'float|round:3', // luftfeuchtigkeit aussen
+        'barometer' => 'float|pressure:inhg,hpa|round:3',
+        'altimeter' => 'float|pressure:inhg,hpa|round:3', // hoehenmesser ?
+        'pressure' => 'float|pressure:inhg,hpa|round:3', // druck ?
+        'dewpoint' => 'float|temperature:fahrenheit,celsius|round:3', // taupunkt
+        'windchill' => 'float|temperature:fahrenheit,celsius|round:3', // gefuehlte temperatur
         'windDir' => 'integer', // windrichtung
         'windGustDir' => 'integer', // windrichtung boeenen
-        'windGust' => 'double|speed:mph,ms', // boeenen
-        'windSpeed' => 'double|speed:mph,ms', // windgeschwindigkeit
-        'rainRate' => 'double|length:inch,mm', // menge regen pro stunde
-        'rain' => 'double|length:inch,mm', // menge regen absolute
+        'windGust' => 'float|speed:mph,ms|round:3', // boeenen
+        'windSpeed' => 'float|speed:mph,ms|round:3', // windgeschwindigkeit
+        'rainRate' => 'float|length:inch,mm|round:3', // menge regen pro stunde
+        'rain' => 'float|length:inch,mm|round:3', // menge regen absolute
     ];
 
     protected static function boot()
@@ -58,6 +63,15 @@ class Archive extends Model
         return $query->select(['dateTime','barometer', 'pressure', 'altimeter']);
     }
     
+    public function getEpochAttribute() {
+        return Carbon::parse($this->dateTime)->addMinutes(2)->timestamp;
+    }
+
+    public function getUtcDateAttribute() {
+        $date =  Carbon::createFromFormat('m/d/Y h:i:s A',$this->dateTime);
+        return $date;
+    }
+
     public function getRainPast24h()
     {
         $rain = self::where('dateTime', '>=', \Carbon\Carbon::now()->subDay()->timestamp)
@@ -131,11 +145,12 @@ class Archive extends Model
             case 'json':
                 return $this->fromJson($value);
             case 'collection':
-                return new BaseCollection($this->fromJson($value));
+                return new Collection($this->fromJson($value));
             case 'date':
                 return $this->asDate($value);
             case 'datetime':
             case 'custom_datetime':
+                
                 return $this->asDateTime($value);
             case 'timestamp':
                 return $this->asTimestamp($value);
@@ -144,14 +159,25 @@ class Archive extends Model
         }
     }
 
+    protected function GetWeewxDateCast($value,$rule) {
+        
+        // dd(date('m/d/Y h:i:s A', 1575912660));
+        $date = Carbon::createFromTimestamp($value,'UTC');
+        return $date->format('m/d/Y h:i:s A');
+    }
+
     protected function GetLengthCast($value, $rule)
     {
         $srcUnit = array_get($rule, '0', 'inch');
         $targetUnit = array_get($rule, '1', 'mm');
         if ($srcUnit == 'inch' && $targetUnit == 'mm') {
-            return doubleval($value) * 25.4;
+            return floatval($value) * 25.4;
         }
         throw new \Exception('conversion currently not implemented');
+    }
+
+    protected function GetRoundCast($value, $rule) {
+        return round($value, $rule[0] ?? 2);
     }
 
     protected function GetSpeedCast($value, $rule)
@@ -159,9 +185,9 @@ class Archive extends Model
         $srcUnit = array_get($rule, '0', 'mph');
         $targetUnit = array_get($rule, '1', 'ms');
         if ($srcUnit == 'mph' && $targetUnit == 'ms') {
-            return doubleval($value) * 0.44704;
+            return floatval($value) * 0.44704;
         } elseif ($srcUnit == 'mph' && $targetUnit == 'kmh') {
-            return doubleval($value) * 1.60934;
+            return floatval($value) * 1.60934;
         }
 
         throw new \Exception('conversion currently not implemented');
@@ -173,7 +199,7 @@ class Archive extends Model
         $targetUnit = array_get($rule, '1', 'celsius');
 
         if ($srcUnit == 'fahrenheit' && $targetUnit == 'celsius') {
-            return (doubleval($value) - 32) / 1.8;
+            return (floatval($value) - 32) / 1.8;
         }
 
         throw new \Exception('conversion currently not implemented');
@@ -185,7 +211,7 @@ class Archive extends Model
         $targetUnit = array_get($rule, '1', 'hpa');
 
         if ($srcUnit == 'inhg' && $targetUnit == 'hpa') {
-            return doubleval($value) * 33.863886666667;
+            return floatval($value) * 33.863886666667;
         }
 
         throw new \Exception('conversion currently not implemented');
@@ -193,6 +219,69 @@ class Archive extends Model
 
     protected function GetPercentageCast($value, $rule = [])
     {
-        return doubleval($value)/100;
+        return floatval($value)/100;
+    }
+
+    protected function GetDecimalCast($value, $rule) {
+        return number_format($value, $rule[0]);
+    }
+
+    protected function getAlmanacAttribute() {
+        /* calculate the sunrise time for Lisbon, Portugal
+            Latitude: 38.4 North
+            Longitude: 9 West
+            Zenith ~= 90
+            offset: +1 GMT
+        */
+        
+        $lat = floatval($this->station->latitude);
+        $lng = floatval($this->station->longitude);
+        // dd($lat, $lng, $this->station);
+        /** @var Carbon $time*/
+        $time = $this->UtcDate;
+
+        $sun_info = collect(date_sun_info($time->timestamp, $lat, $lng))->map(function($v) {
+            return Carbon::createFromTimestampUTC($v);
+        });
+        
+
+        $moon = new \Solaris\MoonPhase($time->timestamp);
+        $moon_fullness = 0;
+        if ($moon->phase() <= 0.5) {
+            $moon_fullness = abs($moon->phase() * 200);
+        } else {
+            $moon_fullness = abs(($moon->phase() - 0.5) * 200);
+        }
+        return json_decode(collect([
+            "sunrise_minute" => $sun_info->get('sunrise')->minute,
+            "sunrise_epoch"  => $sun_info->get('sunrise')->timestamp,
+            "sunset" => $sun_info->get('sunset')->format("h:i:s A"), //03:54:58 PM",
+            "sunrise_hour" => $sun_info->get('sunrise')->hour,
+            "sunset_minute" => $sun_info->get('sunset')->minute,
+            "sunset_epoch" => $sun_info->get('sunset')->timestamp,
+            "moon" => collect([
+                "moon_phase" => $moon->phase_name(),
+                "moon_fullness" => round($moon_fullness,0),
+                "moon_phase_raw" => round($moon->phase(),3),
+            ]),
+            "sunrise" => $sun_info->get('sunrise')->format("h:i:s A"),
+            "sunset_hour" => $sun_info->get('sunset')->hour,
+        ])->toJson());
+
+// echo date("D M d Y"). ', sunrise time : ' .date_sunrise(time(), SUNFUNCS_RET_STRING, 38.4, -9, 90, 1);
+    }
+
+    protected function getStationAttribute() {
+        return json_decode('{
+            "latitude_dd": "55.8158264713",
+            "altitude": "2 meters",
+            "hardware": "FineOffsetUSB",
+            "latitude": "48.95\' N",
+            "longitude_dd": "8.21626371515",
+            "archive_interval": "60",
+            "longitude": "12.98\' E",
+            "archive_interval_ms": "60000",
+            "location": "Nymindegab, Denmark"
+        }');
     }
 }
